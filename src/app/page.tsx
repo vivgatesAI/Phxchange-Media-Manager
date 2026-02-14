@@ -58,6 +58,7 @@ const DEFAULT_IMAGE_PROMPTS = [
 ];
 
 type Mode = "yolo" | "custom";
+type InputMode = "url" | "pdf" | "text";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -65,13 +66,17 @@ export default function Home() {
   const [topic, setTopic] = useState("");
   const [model, setModel] = useState("kimi-k2-5");
   const [mode, setMode] = useState<Mode>("yolo");
+  const [inputMode, setInputMode] = useState<InputMode>("url");
+  
+  // PDF state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [extractingPdf, setExtractingPdf] = useState(false);
   
   // YOLO state
   const [loading, setLoading] = useState(false);
   const [post, setPost] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [stats, setStats] = useState<string[]>([]);
-  const [file, setFile] = useState<File | null>(null);
   
   // Custom mode state
   const [selectedPostTemplate, setSelectedPostTemplate] = useState(POST_PROMPT_TEMPLATES[0].id);
@@ -94,6 +99,44 @@ export default function Home() {
     }
   }, [selectedPostTemplate, topic]);
 
+  // Handle PDF file selection
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    
+    if (selectedFile.type !== "application/pdf") {
+      alert("Please select a PDF file");
+      return;
+    }
+
+    setPdfFile(selectedFile);
+    setExtractingPdf(true);
+    setProgress("Extracting text from PDF...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch("/api/extract-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (data.error) {
+        setProgress(`Error extracting PDF: ${data.error}`);
+      } else {
+        setText(data.text);
+        setProgress("PDF text extracted! You can now generate your post.");
+      }
+    } catch (err: any) {
+      setProgress(`Error extracting PDF: ${err.message}`);
+    }
+
+    setExtractingPdf(false);
+  }
+
   // YOLO Mode - Generate Everything
   async function handleYoloGenerate() {
     setLoading(true);
@@ -101,19 +144,27 @@ export default function Home() {
     setImages([]);
     setStats([]);
     setImageProgress(0);
-    setProgress("Scraping article, summarizing, and generating LinkedIn post...");
+    
+    // Determine what to send based on input mode
+    let requestBody: any = { 
+      articleText: text,
+      topic: topic || "AI in Pharmaceutical Industry",
+      model,
+      mode: "yolo"
+    };
+    
+    if (inputMode === "url" && url) {
+      requestBody.url = url;
+      setProgress("Scraping article, summarizing, and generating LinkedIn post...");
+    } else {
+      setProgress("Generating LinkedIn post from provided content...");
+    }
 
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          url, 
-          articleText: text, // Pass full article text for context
-          topic: topic || "AI in Pharmaceutical Industry",
-          model,
-          mode: "yolo"
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await res.json();
@@ -329,22 +380,84 @@ export default function Home() {
           <h2>Content Input</h2>
         </div>
         
+        {/* Input Mode Tabs */}
+        <div className="input-mode-tabs">
+          <button 
+            className={`input-mode-tab ${inputMode === 'url' ? 'active' : ''}`}
+            onClick={() => setInputMode("url")}
+          >
+            🔗 URL
+          </button>
+          <button 
+            className={`input-mode-tab ${inputMode === 'pdf' ? 'active' : ''}`}
+            onClick={() => setInputMode("pdf")}
+          >
+            📄 PDF
+          </button>
+          <button 
+            className={`input-mode-tab ${inputMode === 'text' ? 'active' : ''}`}
+            onClick={() => setInputMode("text")}
+          >
+            📝 Text
+          </button>
+        </div>
+
+        {/* URL Input */}
+        {inputMode === "url" && (
+          <div className="input-group">
+            <label>Article URL</label>
+            <input 
+              className="input" 
+              placeholder="https://example.com/article" 
+              value={url} 
+              onChange={(e) => setUrl(e.target.value)} 
+            />
+          </div>
+        )}
+
+        {/* PDF Input */}
+        {inputMode === "pdf" && (
+          <div className="input-group">
+            <label>Upload PDF</label>
+            <input 
+              type="file" 
+              accept=".pdf"
+              onChange={handlePdfUpload}
+              className="file-input"
+            />
+            {pdfFile && (
+              <div className="file-info">
+                📄 {pdfFile.name} ({Math.round(pdfFile.size / 1024)} KB)
+              </div>
+            )}
+            {extractingPdf && (
+              <div className="extracting-indicator">
+                <span className="spinner"></span> Extracting text from PDF...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Text Input */}
+        {inputMode === "text" && (
+          <div className="input-group">
+            <label>Paste article text</label>
+            <textarea 
+              placeholder="Paste article content here..." 
+              value={text} 
+              onChange={(e) => setText(e.target.value)} 
+              rows={6}
+            />
+          </div>
+        )}
+
         <div className="input-group">
-          <label>Topic / Headline (for pharma AI news)</label>
+          <label>Topic / Headline (optional - auto-detected from content)</label>
           <input 
             className="input" 
             placeholder="e.g., AI Drug Discovery Breakthrough 2026" 
             value={topic} 
             onChange={(e) => setTopic(e.target.value)} 
-          />
-        </div>
-
-        <div className="input-group">
-          <label>Or paste article text (optional context)</label>
-          <textarea 
-            placeholder="Paste article content for more context..." 
-            value={text} 
-            onChange={(e) => setText(e.target.value)} 
           />
         </div>
 
@@ -366,7 +479,7 @@ export default function Home() {
           <button 
             className="generate-btn yolo" 
             onClick={handleYoloGenerate} 
-            disabled={loading || (!url && !text && !topic)}
+            disabled={loading || (inputMode === "url" && !url && !topic) || (inputMode === "text" && !text && !topic) || (inputMode === "pdf" && !text && !topic)}
           >
             {loading ? (
               <>
