@@ -54,9 +54,9 @@ Do not use hashtags.\n\nCONTENT:\n${content}`;
 
     const post = chat.choices?.[0]?.message?.content || "";
 
-    const stats = extractStats(post);
+    const stats = await extractStatsFromSource(content, model);
 
-    const imagePrompts = buildImagePrompts(post);
+    const imagePrompts = buildImagePrompts(stats);
     const images: string[] = [];
     for (const p of imagePrompts) {
       const img = await veniceImage({ prompt: p });
@@ -70,17 +70,25 @@ Do not use hashtags.\n\nCONTENT:\n${content}`;
   }
 }
 
-function extractStats(text: string): string[] {
-  const matches = text.match(/\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?[MBT]?|\d+\s?(?:days|weeks|months|years)/gi) || [];
-  const uniq = Array.from(new Set(matches));
-  return uniq.slice(0, 5);
+async function extractStatsFromSource(content: string, model: string): Promise<string[]> {
+  const system = "You are a research analyst. Extract the most relevant stats and numerical facts for a healthcare and pharma audience. No em dashes. No apostrophes.";
+  const prompt = `From the following content, extract the 6 most relevant stats or numerical facts. Each item should be a short sentence. If there are no numbers, infer measurable outcomes or benchmarks that are implied.\n\nCONTENT:\n${content}`;
+  const chat = await veniceChat({ model, messages: [
+    { role: "system", content: system },
+    { role: "user", content: prompt },
+  ]});
+  const text = chat.choices?.[0]?.message?.content || "";
+  return text.split(/\n+/).map(s => s.replace(/^[\-\*\d\.\)\s]+/, "").trim()).filter(Boolean).slice(0, 6);
 }
 
-function buildImagePrompts(post: string): string[] {
+function buildImagePrompts(stats: string[]): string[] {
+  const palette = "Use AIPharmaXchange colors: deep navy, blue, soft light blue, and gold accents.";
   return [
-    `Watercolor professional healthcare infographic. Title: GenAI in Pharma. Use clean white space, soft blues and deep navy, accent gold. Emphasize trust, evidence, and productivity.`,
-    `Minimalist watercolor slide for LinkedIn carousel. Theme: AI enabled medical affairs. Icons for evidence, safety, KOLs, trials. Colors: deep blue, soft blue, gold.`,
-    `Watercolor executive style. Theme: workflow and workforce modernization in pharma. Simple diagram and calm palette.`,
-    `Watercolor abstract. Theme: GenAI adoption at scale in healthcare. Elegant, professional, high clarity.`
+    `Watercolor professional healthcare infographic. Slide 1: Key takeaways for GenAI in Pharma. Include 3 short bullets. ${palette}`,
+    `Minimalist watercolor slide. Slide 2: Most important stat and why it matters. Use a clean callout box. ${palette}`,
+    `Watercolor executive style. Slide 3: Evidence and safety themes with icons. ${palette}`,
+    `Watercolor process diagram. Slide 4: Workflow impact and efficiency. ${palette}`,
+    `Watercolor abstract. Slide 5: Adoption at scale in healthcare. ${palette}`,
+    `Watercolor CTA slide. Slide 6: Join us for the AIPharmaXchange on LinkedIn. Clear centered text. ${palette}`
   ];
 }
