@@ -348,8 +348,8 @@ export default function Home() {
           <div className="logo-badge">
             <span>◆</span> PHXCHANGE
           </div>
-          <h1>LinkedIn Carousel Generator</h1>
-          <p>Create stunning pharma AI carousels. Choose YOLO mode for quick results or Custom mode for full control.</p>
+          <h1>AIPharmaXchange - Media Manager</h1>
+          <p>Create stunning pharma AI content. Choose YOLO mode for quick results or Custom mode for full control.</p>
         </div>
       </div>
 
@@ -507,7 +507,7 @@ export default function Home() {
             <div className="section result-section">
               <div className="section-header">
                 <div className="section-icon">💼</div>
-                <h2>Generated LinkedIn Post</h2>
+                <h2>Generated Post</h2>
                 <button className="copy-btn" onClick={() => handleCopy(post)}>📋 Copy</button>
               </div>
               <div className="post-preview">{post}</div>
@@ -541,7 +541,7 @@ export default function Home() {
           <div className="section">
             <div className="section-header">
               <div className="section-icon">✍️</div>
-              <h2>LinkedIn Post Generator</h2>
+              <h2>Post Generator</h2>
             </div>
 
             <div className="template-selector">
