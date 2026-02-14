@@ -13,8 +13,14 @@ const MODEL_OPTIONS = [
   { id: "openai-gpt-oss-120b", label: "GPT-OSS 120B" },
 ];
 
-// 5 different LinkedIn post prompt templates
+// 6 different LinkedIn post prompt templates
 const POST_PROMPT_TEMPLATES = [
+  {
+    id: "summary",
+    name: "📋 Summary + Highlights",
+    description: "Executive summary with key takeaways",
+    template: `Create a concise LinkedIn post summarizing this article. Structure: 1) Brief context, 2) 3-5 key highlights with specific numbers/stats, 3) Why it matters to pharma/AI leaders, 4) One thought-provoking question. Keep it under 1500 characters. No hashtags.`
+  },
   {
     id: "breaking",
     name: "🚨 Breaking News",
@@ -243,6 +249,53 @@ export default function Home() {
       }
     } catch (e: any) {
       console.error(e);
+    }
+
+    setGeneratingImageId(null);
+  }
+
+  // Custom Mode - Generate AI Prompts from Article
+  async function handleGenerateAIPromptsFromArticle() {
+    if (!text && !topic) {
+      alert("Please provide article text or a topic first");
+      return;
+    }
+
+    setGeneratingImageId(-1); // -1 indicates generating all prompts
+    setProgress("Generating AI-powered image prompts from article...");
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          articleText: text,
+          topic: topic || "AI in Pharmaceutical Industry",
+          model,
+          mode: "generate-image-prompts"
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (data.error) {
+        setProgress(`Error: ${data.error}`);
+      } else if (data.imagePrompts && data.imagePrompts.length > 0) {
+        // Update the image prompts with AI-generated ones
+        const newPrompts = data.imagePrompts.map((p: string, idx: number) => ({
+          id: idx + 1,
+          name: DEFAULT_IMAGE_PROMPTS[idx]?.name || `Slide ${idx + 1}`,
+          prompt: p,
+          generated: false,
+          imageUrl: "" as string | null
+        }));
+        setImagePrompts(newPrompts);
+        setProgress("Image prompts generated! You can now edit or generate images.");
+      } else {
+        setProgress("Could not generate prompts. Try providing more article text.");
+      }
+    } catch (e: any) {
+      setProgress(`Error: ${e.message}`);
     }
 
     setGeneratingImageId(null);
@@ -593,6 +646,21 @@ export default function Home() {
             <div className="section-header">
               <div className="section-icon">🎨</div>
               <h2>Image Prompts</h2>
+            </div>
+            
+            <div className="ai-prompts-section">
+              <button 
+                className="generate-ai-prompts-btn" 
+                onClick={handleGenerateAIPromptsFromArticle}
+                disabled={generatingImageId !== null || (!text && !topic)}
+                title="Generate AI-powered prompts based on your article content"
+              >
+                {generatingImageId === -1 ? "⏳ Generating..." : "🤖 Generate AI Prompts from Article"}
+              </button>
+              <p className="ai-prompts-hint">Click to automatically generate unique prompts based on your article content</p>
+            </div>
+
+            <div className="button-row">
               <button 
                 className="generate-all-btn" 
                 onClick={handleGenerateAllImages}

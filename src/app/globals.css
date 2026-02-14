@@ -823,3 +823,46 @@ textarea {
   height: 14px;
   border-width: 2px;
 }
+
+/* AI Prompts Section */
+.ai-prompts-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(42, 157, 143, 0.1) 0%, rgba(233, 69, 96, 0.05) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(42, 157, 143, 0.2);
+}
+
+.generate-ai-prompts-btn {
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #2a9d8f 0%, #264653 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.generate-ai-prompts-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(42, 157, 143, 0.3);
+}
+
+.generate-ai-prompts-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-prompts-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}

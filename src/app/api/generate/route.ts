@@ -44,6 +44,67 @@ export async function POST(req: Request) {
       return NextResponse.json({ improvedPrompt: improvedPrompt || "" });
     }
 
+    // Generate image prompts from article (Custom mode)
+    if (mode === "generate-image-prompts") {
+      const fullText = articleText || topic || "";
+      
+      if (!fullText || fullText.length < 50) {
+        return NextResponse.json({ error: "Please provide article text or a topic" }, { status: 400 });
+      }
+
+      // First summarize the article to extract key points
+      const summaryMessages = [
+        { role: "system", content: "Extract exactly 6 key insights, statistics, or findings from this article that would be most impactful for healthcare executives. Each should be 1-2 sentences, specific, and data-driven." },
+        { role: "user", content: fullText.substring(0, 3000) }
+      ];
+      const statsChat = await veniceChat({ model: textModel, messages: summaryMessages });
+      const statsText = statsChat.choices[0].message.content || "";
+      
+      // Now generate unique image prompts based on the article content
+      const imagePromptMessages = [
+        { role: "system", content: `You are an expert at creating image generation prompts for LinkedIn carousel slides. Create specific, visually compelling prompts based on actual article content.
+
+EXAMPLES:
+
+Article about Wegovy heart failure:
+- Slide 1: "45% reduction in heart failure symptoms" → "Medical data visualization showing 45% improvement in heart function metrics. EKG line graph with upward trend. Watercolor minimalist style, navy blue and teal, executive quality."
+- Slide 2: "GLP-1 drug mechanism" → "Abstract illustration of GLP-1 hormone mechanism in the body. Molecular structures with soft watercolor effect. Professional healthcare aesthetic."
+
+Article about Pfizer AI discovery:
+- Slide 1: "60% faster drug discovery" → "Futuristic timeline comparison: traditional vs AI-powered drug discovery. Split screen with clock imagery. Watercolor minimalist, navy and gold."
+- Slide 2: "10 million molecules analyzed" → "Abstract representation of millions of molecules being analyzed. Digital data streams with organic flow. Watercolor tech aesthetic."` },
+        { role: "user", content: `Create exactly 6 specific image prompts for LinkedIn carousel slides based on this article:
+
+ARTICLE/TOPIC:
+${fullText.substring(0, 2000)}
+
+KEY STATS/INSIGHTS:
+${statsText}
+
+Requirements:
+- Each prompt must reference specific content from the article
+- Include the actual numbers, findings, or concepts from the article
+- Use watercolor minimalist professional style
+- Include AIPharmaXchange brand colors: deep navy, blue, soft light blue, gold accents
+- Each prompt should describe a different slide concept
+- Keep each prompt under 80 words
+- Output as a simple list, one prompt per line` }
+      ];
+      
+      const imagePromptChat = await veniceChat({ model: textModel, messages: imagePromptMessages });
+      const imagePromptText = imagePromptChat.choices[0].message.content || "";
+      
+      // Parse the generated image prompts
+      const imagePrompts = imagePromptText.split(/\n+/).map(function(s) { 
+        return s.replace(/^[\-\*\d\.\)\s]+\d*[：:\.]?\s*/i, "").trim(); 
+      }).filter(Boolean).slice(0, 6);
+
+      return NextResponse.json({ 
+        imagePrompts: imagePrompts,
+        stats: statsText.split(/\n+/).map(function(s) { return s.replace(/^[\-\*\d\.\)\s]+/, "").trim(); }).filter(Boolean)
+      });
+    }
+
     // Get full article content - prioritize passed articleText, then scrape from URL
     let fullArticleText = articleText || "";
     
