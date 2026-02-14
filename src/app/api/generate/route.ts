@@ -56,10 +56,10 @@ Do not use hashtags.\n\nCONTENT:\n${content}`;
 
     const stats = await extractStatsFromSource(content, model);
 
-    const imagePrompts = buildImagePrompts(stats);
+    const imagePrompts = buildImagePrompts(stats, content);
     const images: string[] = [];
-    for (const p of imagePrompts) {
-      const img = await veniceImage({ prompt: p });
+    for (let i = 0; i < imagePrompts.length; i++) {
+      const img = await veniceImage({ prompt: imagePrompts[i] });
       const b64 = img.images?.[0];
       images.push(`data:image/png;base64,${b64}`);
     }
@@ -81,14 +81,44 @@ async function extractStatsFromSource(content: string, model: string): Promise<s
   return text.split(/\n+/).map(s => s.replace(/^[\-\*\d\.\)\s]+/, "").trim()).filter(Boolean).slice(0, 6);
 }
 
-function buildImagePrompts(stats: string[]): string[] {
+function buildImagePrompts(stats: string[], content: string): string[] {
   const palette = "Use AIPharmaXchange colors: deep navy, blue, soft light blue, and gold accents.";
+  
+  // Extract key topic from content for personalization
+  const contentLower = content.toLowerCase();
+  let topic = "Healthcare Innovation";
+  if (contentLower.includes("ai") || contentLower.includes("artificial intelligence")) {
+    topic = "AI in Healthcare";
+  } else if (contentLower.includes("drug") || contentLower.includes("clinical")) {
+    topic = "Clinical Research";
+  } else if (contentLower.includes("patient")) {
+    topic = "Patient Outcomes";
+  } else if (contentLower.includes("digital")) {
+    topic = "Digital Health";
+  }
+  
+  // Extract a highlight stat if available
+  const highlightStat = stats[0] || "key metrics";
+  const secondStat = stats[1] || "important data";
+
+  // Create content-focused prompts WITHOUT Slide # labels
   return [
-    `Watercolor professional healthcare infographic. Slide 1: Key takeaways for GenAI in Pharma. Include 3 short bullets. ${palette}`,
-    `Minimalist watercolor slide. Slide 2: Most important stat and why it matters. Use a clean callout box. ${palette}`,
-    `Watercolor executive style. Slide 3: Evidence and safety themes with icons. ${palette}`,
-    `Watercolor process diagram. Slide 4: Workflow impact and efficiency. ${palette}`,
-    `Watercolor abstract. Slide 5: Adoption at scale in healthcare. ${palette}`,
-    `Watercolor CTA slide. Slide 6: Join us for the AIPharmaXchange on LinkedIn. Clear centered text. ${palette}`
+    // Slide 1: Key takeaways - focus on actual content
+    `Professional healthcare infographic showcasing key insights from ${topic}. Display key takeaways in elegant typography with minimalist icons. ${palette} Clean modern design, executive presentation style.`,
+    
+    // Slide 2: Main stat highlight - make it about the actual data
+    `Minimalist executive slide featuring "${highlightStat}" prominently displayed in a sophisticated callout box. Use clean data visualization style. ${palette} Modern corporate aesthetic.`,
+    
+    // Slide 3: Secondary data point - tie to pharma context
+    `Professional healthcare illustration emphasizing "${secondStat}" with subtle iconography. ${palette} Executive presentation quality, clean and impactful.`,
+    
+    // Slide 4: Process/workflow - customize to content
+    `Process diagram showing impact and workflow for ${topic}. Clean minimalist icons in watercolor style. ${palette} Professional healthcare aesthetic.`,
+    
+    // Slide 5: Scale/adoption - pharma-focused
+    `Abstract modern illustration representing adoption and scale in healthcare. ${palette} Executive quality, sophisticated and forward-thinking.`,
+    
+    // Slide 6: CTA - no labels, just branding
+    `Elegant call-to-action slide for healthcare leaders. Centered sophisticated text encouraging engagement. ${palette} Premium corporate design, minimalist and powerful.`
   ];
 }

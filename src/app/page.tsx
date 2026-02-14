@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const MODEL_OPTIONS = [
   { id: "llama-3.3-70b", label: "Llama 3.3 70B" },
   { id: "openai-gpt-52", label: "GPT-5.2" },
   { id: "claude-sonnet-45", label: "Claude Sonnet 4.5" },
   { id: "grok-41-fast", label: "Grok 4.1 Fast" },
+  { id: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
+  { id: "zai-org-glm-4.7", label: "GLM-4.7" },
+  { id: "openai-gpt-oss-120b", label: "GPT-OSS 120B" },
 ];
+
+type ProcessingStep = "idle" | "fetching" | "analyzing" | "generating-post" | "extracting-stats" | "creating-images" | "complete" | "error";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -18,12 +23,73 @@ export default function Home() {
   const [images, setImages] = useState<string[]>([]);
   const [stats, setStats] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<ProcessingStep>("idle");
+  const [progressMessage, setProgressMessage] = useState("");
+  const [imageProgress, setImageProgress] = useState(0);
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stepMessages: Record<ProcessingStep, string> = {
+    idle: "",
+    fetching: "🔄 Fetching article content...",
+    analyzing: "📄 Analyzing content...",
+    "generating-post": "✍️ Generating LinkedIn post...",
+    "extracting-stats": "📊 Extracting key insights...",
+    "creating-images": "🎨 Creating carousel images...",
+    complete: "✅ All done!",
+    error: "❌ Something went wrong",
+  };
+
+  useEffect(() => {
+    if (loading) {
+      // Simulate progress through stages
+      setProgress("fetching");
+      setProgressMessage("Fetching article content...");
+      
+      progressTimerRef.current = setTimeout(() => {
+        setProgress("analyzing");
+        setProgressMessage("Analyzing content...");
+      }, 1500);
+      
+      progressTimerRef.current = setTimeout(() => {
+        setProgress("generating-post");
+        setProgressMessage("Generating LinkedIn post...");
+      }, 3000);
+      
+      progressTimerRef.current = setTimeout(() => {
+        setProgress("extracting-stats");
+        setProgressMessage("Extracting key insights...");
+      }, 5000);
+      
+      progressTimerRef.current = setTimeout(() => {
+        setProgress("creating-images");
+        setProgressMessage("Creating carousel images...");
+        // Start image progress
+        let imgProg = 0;
+        const imgTimer = setInterval(() => {
+          imgProg += 16.67;
+          setImageProgress(Math.min(imgProg, 100));
+          if (imgProg >= 100) clearInterval(imgTimer);
+        }, 800);
+      }, 7000);
+    } else {
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current);
+      }
+    }
+
+    return () => {
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current);
+      }
+    };
+  }, [loading]);
 
   async function handleGenerate() {
     setLoading(true);
     setPost("");
     setImages([]);
     setStats([]);
+    setImageProgress(0);
 
     let payload: any = { url, text, model };
     let res: Response;
@@ -44,19 +110,34 @@ export default function Home() {
     }
 
     const data = await res.json();
+    
+    if (data.error) {
+      setProgress("error");
+      setProgressMessage(data.error);
+      setLoading(false);
+      return;
+    }
+
     setPost(data.post || "");
     setImages(data.images || []);
     setStats(data.stats || []);
+    setProgress("complete");
+    setProgressMessage("All carousel content ready!");
+    setImageProgress(100);
     setLoading(false);
   }
 
   async function handleDownloadZip() {
-    const res = await fetch("/api/download-zip", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ images }) });
+    const res = await fetch("/api/download-zip", { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json" }, 
+      body: JSON.stringify({ images }) 
+    });
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    const downloadUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "linkedin-carousel.zip";
+    a.href = downloadUrl;
+    a.download = "phxchange-carousel.zip";
     a.click();
   }
 
@@ -68,61 +149,155 @@ export default function Home() {
   return (
     <main className="container">
       <div className="header">
-        <h1>LinkedIn Carousel Generator (Healthcare)</h1>
-        <p>Summarize an article for a pharma audience and create a 4x5 watercolor carousel with Venice AI.</p>
+        <div className="header-content">
+          <div className="logo-badge">PHXCHANGE</div>
+          <h1>LinkedIn Carousel Generator</h1>
+          <p>Transform healthcare articles into stunning visual carousels for pharma leaders</p>
+        </div>
+        <div className="header-decoration"></div>
       </div>
 
-      <div className="section">
-        <div className="label">Input</div>
-        <div className="row">
-          <input className="input" placeholder="Article URL" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
-            {MODEL_OPTIONS.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
+      <div className="input-section">
+        <div className="section-header">
+          <span className="section-icon">📝</span>
+          <h2>Content Input</h2>
         </div>
-        <div style={{ marginTop: 12 }}>
-          <textarea placeholder="Or paste full text here" value={text} onChange={(e) => setText(e.target.value)} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <input className="input" type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-        </div>
-        <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-          <button className="button" onClick={handleGenerate} disabled={loading}>{loading ? "Working…" : "Generate"}</button>
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="label">Key stats & insights</div>
-        {stats.length === 0 ? <p>No stats yet.</p> : (
-          <ul>
-            {stats.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
-        )}
-      </div>
-
-      <div className="section">
-        <div className="label">LinkedIn post</div>
-        <textarea value={post} readOnly />
-        <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-          <button className="button secondary" onClick={handleCopy}>Copy Post</button>
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="label">Carousel images (4x5)</div>
-        <div className="carousel">
-          {images.map((img, i) => (
-            <img key={i} src={img} alt={`slide-${i}`} style={{ width: "100%", borderRadius: 12 }} />
-          ))}
-        </div>
-        {images.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <button className="button" onClick={handleDownloadZip}>Download ZIP</button>
+        
+        <div className="input-grid">
+          <div className="input-group">
+            <label>Article URL</label>
+            <input 
+              className="input" 
+              placeholder="https://example.com/article" 
+              value={url} 
+              onChange={(e) => setUrl(e.target.value)} 
+            />
           </div>
-        )}
+          <div className="input-group">
+            <label>AI Model</label>
+            <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
+              {MODEL_OPTIONS.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="input-group full-width">
+          <label>Or paste article text</label>
+          <textarea 
+            placeholder="Paste the full article content here..." 
+            value={text} 
+            onChange={(e) => setText(e.target.value)} 
+          />
+        </div>
+
+        <div className="input-group full-width">
+          <label>Upload PDF</label>
+          <div className="file-upload">
+            <input 
+              className="input" 
+              type="file" 
+              accept="application/pdf" 
+              onChange={(e) => setFile(e.target.files?.[0] || null)} 
+            />
+            {file && <span className="file-name">📎 {file.name}</span>}
+          </div>
+        </div>
+
+        <button 
+          className="generate-btn" 
+          onClick={handleGenerate} 
+          disabled={loading || (!url && !text && !file)}
+        >
+          {loading ? (
+            <>
+              <span className="spinner"></span>
+              Generating...
+            </>
+          ) : (
+            <>
+              <span className="btn-icon">✨</span>
+              Generate Carousel
+            </>
+          )}
+        </button>
       </div>
+
+      {loading && (
+        <div className="progress-section">
+          <div className="progress-header">
+            <div className="progress-indicator">
+              <div className={`progress-dot ${["fetching", "analyzing", "generating-post", "extracting-stats", "creating-images", "complete"].includes(progress) ? 'active' : ''}`}></div>
+              <div className={`progress-dot ${["analyzing", "generating-post", "extracting-stats", "creating-images", "complete"].includes(progress) ? 'active' : ''}`}></div>
+              <div className={`progress-dot ${["generating-post", "extracting-stats", "creating-images", "complete"].includes(progress) ? 'active' : ''}`}></div>
+              <div className={`progress-dot ${["extracting-stats", "creating-images", "complete"].includes(progress) ? 'active' : ''}`}></div>
+              <div className={`progress-dot ${["creating-images", "complete"].includes(progress) ? 'active' : ''}`}></div>
+            </div>
+            <span className="progress-text">{progressMessage}</span>
+          </div>
+          {progress === 'creating-images' && (
+            <div className="image-progress">
+              <div className="image-progress-bar">
+                <div className="image-progress-fill" style={{ width: `${imageProgress}%` }}></div>
+              </div>
+              <span className="image-progress-text">Creating image {Math.ceil(imageProgress / 16.67)} of 6</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {stats.length > 0 && (
+        <div className="section stats-section">
+          <div className="section-header">
+            <span className="section-icon">📊</span>
+            <h2>Key Insights</h2>
+          </div>
+          <div className="stats-grid">
+            {stats.map((stat, i) => (
+              <div key={i} className="stat-card">
+                <span className="stat-number">{i + 1}</span>
+                <span className="stat-text">{stat}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {post && (
+        <div className="section post-section">
+          <div className="section-header">
+            <span className="section-icon">💼</span>
+            <h2>LinkedIn Post</h2>
+            <button className="copy-btn" onClick={handleCopy}>
+              📋 Copy
+            </button>
+          </div>
+          <div className="post-preview">
+            {post}
+          </div>
+        </div>
+      )}
+
+      {images.length > 0 && (
+        <div className="section carousel-section">
+          <div className="section-header">
+            <span className="section-icon">🎠</span>
+            <h2>Carousel (4:5)</h2>
+            <button className="download-btn" onClick={handleDownloadZip}>
+              ⬇️ Download ZIP
+            </button>
+          </div>
+          <div className="carousel">
+            {images.map((img, i) => (
+              <div key={i} className="carousel-item">
+                <div className="slide-number">{i + 1}</div>
+                <img src={img} alt={`Slide ${i + 1}`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
