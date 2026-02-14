@@ -102,16 +102,16 @@ function buildImagePrompts(topic: string, stats: string[]): string[] {
   var secondStat = stats[1] || "healthcare transformation";
 
   return [
-    "Professional healthcare infographic showcasing key insights about " + topic + ". Display 3-4 key takeaways in elegant typography with minimalist medical icons. " + palette + " Clean modern design, executive presentation style, corporate aesthetic.",
+    "Professional healthcare infographic showcasing key insights about " + topic + ". Watercolor minimalist professional style with elegant brushstrokes and clean composition. Display 3-4 key takeaways with subtle medical motifs in soft watercolor. " + palette + " Executive presentation style, sophisticated and refined.",
     
-    "Minimalist executive slide featuring \"" + highlightStat + "\" prominently displayed in a sophisticated callout box. Clean data visualization style. " + palette + " Modern corporate aesthetic, professional healthcare design.",
+    "Minimalist executive slide featuring \"" + highlightStat + "\" prominently displayed in a sophisticated callout box. Watercolor style with soft color washes. " + palette + " Modern corporate aesthetic, professional healthcare design with watercolor refinement.",
     
-    "Professional healthcare illustration emphasizing \"" + secondStat + "\" with subtle iconography and evidence-based design elements. " + palette + " Executive presentation quality, clean and impactful.",
+    "Professional healthcare illustration emphasizing \"" + secondStat + "\" with subtle iconography and evidence-based design elements. Watercolor minimalist professional style with sophisticated brushwork. " + palette + " Executive presentation quality, clean and impactful.",
     
-    "Process diagram showing AI implementation workflow in pharmaceutical industry. Clean minimalist icons in contemporary style. " + palette + " Professional healthcare aesthetic, executive quality.",
+    "Process diagram showing AI implementation workflow in pharmaceutical industry. Watercolor minimalist icons with contemporary brush style. " + palette + " Professional healthcare aesthetic, executive quality with watercolor elegance.",
     
-    "Abstract modern illustration representing pharmaceutical innovation and AI technology adoption at scale. Sophisticated and forward-thinking design. " + palette + " Executive quality, premium corporate style.",
+    "Abstract modern illustration representing pharmaceutical innovation and AI technology adoption at scale. Watercolor minimalist professional style with artistic brushwork. " + palette + " Executive quality, premium corporate style with sophisticated watercolor aesthetic.",
     
-    "Elegant call-to-action slide for healthcare and pharma industry leaders. Centered sophisticated text encouraging connection and engagement. " + palette + " Premium corporate design, minimalist and powerful."
+    "Elegant call-to-action slide for healthcare and pharma industry leaders. Watercolor minimalist style with centered sophisticated text encouraging connection. " + palette + " Premium corporate design with watercolor elegance, minimalist and powerful."
   ];
 }

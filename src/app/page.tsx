@@ -47,14 +47,14 @@ const POST_PROMPT_TEMPLATES = [
   }
 ];
 
-// Default image prompts for pharma AI content
+// Default image prompts for pharma AI content - watercolor minimalist professional style
 const DEFAULT_IMAGE_PROMPTS = [
-  { id: 1, name: "Key Insights", prompt: `Professional healthcare infographic displaying key insights about AI in pharmaceutical industry. Clean minimalist design with elegant typography and subtle medical icons. Use AIPharmaXchange brand colors: deep navy, blue, and gold accents. Executive presentation style, modern corporate aesthetic.` },
-  { id: 2, name: "Data Highlight", prompt: `Minimalist executive slide featuring key statistics about AI adoption in pharma. Prominent data visualization with callout box. Use AIPharmaXchange colors: navy, blue, soft light blue, gold. Professional corporate design, clean and impactful.` },
-  { id: 3, name: "Process/Workflow", prompt: `Process diagram showing AI implementation workflow in healthcare/pharma. Clean minimalist icons in contemporary style. AIPharmaXchange color palette. Professional healthcare aesthetic, executive quality.` },
-  { id: 4, name: "Innovation", prompt: `Abstract modern illustration representing pharmaceutical innovation and AI technology. Sophisticated and forward-thinking design. AIPharmaXchange brand colors: deep navy, blue, gold accents. Premium corporate style.` },
-  { id: 5, name: "Future Vision", prompt: `Visionary illustration depicting the future of AI in healthcare. Clean, inspiring, forward-looking aesthetic. AIPharmaXchange colors: navy, blue, gold. Executive presentation quality, sophisticated and impactful.` },
-  { id: 6, name: "Call to Action", prompt: `Elegant call-to-action slide for healthcare and pharma leaders. Centered sophisticated text encouraging engagement and connection. AIPharmaXchange brand colors. Premium corporate design, minimalist and powerful.` }
+  { id: 1, name: "Key Insights", prompt: `Professional healthcare infographic displaying key insights about AI in pharmaceutical industry. Watercolor minimalist professional style with elegant brushstrokes and clean composition. Subtle medical motifs in soft watercolor. AIPharmaXchange brand colors: deep navy, blue, and gold accents. Executive presentation style, sophisticated and refined.` },
+  { id: 2, name: "Data Highlight", prompt: `Minimalist executive slide featuring key statistics about AI adoption in pharma. Watercolor style with soft color washes and callout box. AIPharmaXchange colors: navy, blue, soft light blue, gold. Professional corporate design with watercolor aesthetic, clean and impactful.` },
+  { id: 3, name: "Process/Workflow", prompt: `Process diagram showing AI implementation workflow in healthcare/pharma. Watercolor minimalist icons with contemporary brush style. AIPharmaXchange color palette. Professional healthcare aesthetic, executive quality with watercolor refinement.` },
+  { id: 4, name: "Innovation", prompt: `Abstract modern illustration representing pharmaceutical innovation and AI technology. Watercolor minimalist professional style with sophisticated brushwork. AIPharmaXchange brand colors: deep navy, blue, gold accents. Premium corporate style with artistic elegance.` },
+  { id: 5, name: "Future Vision", prompt: `Visionary illustration depicting the future of AI in healthcare. Watercolor minimalist professional style, clean and inspiring with soft flowing colors. AIPharmaXchange colors: navy, blue, gold. Executive presentation quality, sophisticated and impactful.` },
+  { id: 6, name: "Call to Action", prompt: `Elegant call-to-action slide for healthcare and pharma leaders. Watercolor minimalist style with centered sophisticated text encouraging engagement. AIPharmaXchange brand colors. Premium corporate design with watercolor elegance, minimalist and powerful.` }
 ];
 
 type Mode = "yolo" | "custom";
