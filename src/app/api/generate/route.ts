@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     }
     if (!content) return NextResponse.json({ error: "No content provided" }, { status: 400 });
 
+    // Use kimi-k2-5 for text generation (unless user specifies otherwise)
+    const textModel = model && model !== "gemini-3-flash-preview" ? model : "kimi-k2-5";
+
     const system = `You are a world-class media writer. Write in a polished, modern magazine style. Audience: healthcare/pharma leaders excited about GenAI. No em dashes. Do not use apostrophes. Keep sentences concise and clear.`;
 
     const prompt = `Summarize the following content into a LinkedIn post for healthcare and pharma leaders. Include:
@@ -47,21 +50,29 @@ export async function POST(req: Request) {
 - a closing insight and call to action
 Do not use hashtags.\n\nCONTENT:\n${content}`;
 
-    const chat = await veniceChat({ model, messages: [
+    const chat = await veniceChat({ model: textModel, messages: [
       { role: "system", content: system },
       { role: "user", content: prompt },
     ]});
 
     const post = chat.choices?.[0]?.message?.content || "";
 
-    const stats = await extractStatsFromSource(content, model);
+    const stats = await extractStatsFromSource(content, textModel);
 
     const imagePrompts = buildImagePrompts(stats, content);
+    
+    // Generate images in parallel (3 at a time)
     const images: string[] = [];
-    for (let i = 0; i < imagePrompts.length; i++) {
-      const img = await veniceImage({ prompt: imagePrompts[i] });
-      const b64 = img.images?.[0];
-      images.push(`data:image/png;base64,${b64}`);
+    const batchSize = 3;
+    for (let i = 0; i < imagePrompts.length; i += batchSize) {
+      const batch = imagePrompts.slice(i, i + batchSize);
+      const batchResults = await Promise.all(
+        batch.map(p => veniceImage({ prompt: p }))
+      );
+      batchResults.forEach(img => {
+        const b64 = img.images?.[0];
+        if (b64) images.push(`data:image/png;base64,${b64}`);
+      });
     }
 
     return NextResponse.json({ post, images, stats });

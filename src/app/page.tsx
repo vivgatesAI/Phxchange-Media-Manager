@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 
 const MODEL_OPTIONS = [
+  { id: "kimi-k2-5", label: "Kimi K2.5 (Default)" },
   { id: "llama-3.3-70b", label: "Llama 3.3 70B" },
   { id: "openai-gpt-52", label: "GPT-5.2" },
   { id: "claude-sonnet-45", label: "Claude Sonnet 4.5" },
@@ -17,7 +18,7 @@ type ProcessingStep = "idle" | "fetching" | "analyzing" | "generating-post" | "e
 export default function Home() {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
-  const [model, setModel] = useState(MODEL_OPTIONS[0].id);
+  const [model, setModel] = useState("kimi-k2-5");
   const [loading, setLoading] = useState(false);
   const [post, setPost] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -32,45 +33,45 @@ export default function Home() {
     idle: "",
     fetching: "🔄 Fetching article content...",
     analyzing: "📄 Analyzing content...",
-    "generating-post": "✍️ Generating LinkedIn post...",
+    "generating-post": "✍️ Generating LinkedIn post with Kimi...",
     "extracting-stats": "📊 Extracting key insights...",
-    "creating-images": "🎨 Creating carousel images...",
-    complete: "✅ All done!",
+    "creating-images": "🎨 Creating carousel images (3x parallel)...",
+    complete: "✨ All done!",
     error: "❌ Something went wrong",
   };
 
   useEffect(() => {
     if (loading) {
-      // Simulate progress through stages
+      // Realistic progress - images now generate in parallel (faster)
       setProgress("fetching");
       setProgressMessage("Fetching article content...");
       
       progressTimerRef.current = setTimeout(() => {
         setProgress("analyzing");
         setProgressMessage("Analyzing content...");
-      }, 1500);
+      }, 800);
       
       progressTimerRef.current = setTimeout(() => {
         setProgress("generating-post");
-        setProgressMessage("Generating LinkedIn post...");
-      }, 3000);
+        setProgressMessage("Generating LinkedIn post with Kimi...");
+      }, 1800);
       
       progressTimerRef.current = setTimeout(() => {
         setProgress("extracting-stats");
         setProgressMessage("Extracting key insights...");
-      }, 5000);
+      }, 3500);
       
       progressTimerRef.current = setTimeout(() => {
         setProgress("creating-images");
-        setProgressMessage("Creating carousel images...");
-        // Start image progress
+        setProgressMessage("Creating carousel images (3x parallel)...");
+        // Image progress - faster now due to parallel generation
         let imgProg = 0;
         const imgTimer = setInterval(() => {
-          imgProg += 16.67;
+          imgProg += 8; // Faster increment since 3 at a time
           setImageProgress(Math.min(imgProg, 100));
           if (imgProg >= 100) clearInterval(imgTimer);
-        }, 800);
-      }, 7000);
+        }, 400);
+      }, 5000);
     } else {
       if (progressTimerRef.current) {
         clearTimeout(progressTimerRef.current);
@@ -149,17 +150,19 @@ export default function Home() {
   return (
     <main className="container">
       <div className="header">
+        <div className="geometric"></div>
         <div className="header-content">
-          <div className="logo-badge">PHXCHANGE</div>
+          <div className="logo-badge">
+            <span>◆</span> PHXCHANGE
+          </div>
           <h1>LinkedIn Carousel Generator</h1>
           <p>Transform healthcare articles into stunning visual carousels for pharma leaders</p>
         </div>
-        <div className="header-decoration"></div>
       </div>
 
       <div className="input-section">
         <div className="section-header">
-          <span className="section-icon">📝</span>
+          <div className="section-icon">📝</div>
           <h2>Content Input</h2>
         </div>
         
@@ -241,7 +244,7 @@ export default function Home() {
               <div className="image-progress-bar">
                 <div className="image-progress-fill" style={{ width: `${imageProgress}%` }}></div>
               </div>
-              <span className="image-progress-text">Creating image {Math.ceil(imageProgress / 16.67)} of 6</span>
+              <span className="image-progress-text">Creating image {Math.ceil(imageProgress / 12.5)} of 6</span>
             </div>
           )}
         </div>
@@ -250,7 +253,7 @@ export default function Home() {
       {stats.length > 0 && (
         <div className="section stats-section">
           <div className="section-header">
-            <span className="section-icon">📊</span>
+            <div className="section-icon">📊</div>
             <h2>Key Insights</h2>
           </div>
           <div className="stats-grid">
@@ -267,7 +270,7 @@ export default function Home() {
       {post && (
         <div className="section post-section">
           <div className="section-header">
-            <span className="section-icon">💼</span>
+            <div className="section-icon">💼</div>
             <h2>LinkedIn Post</h2>
             <button className="copy-btn" onClick={handleCopy}>
               📋 Copy
@@ -282,7 +285,7 @@ export default function Home() {
       {images.length > 0 && (
         <div className="section carousel-section">
           <div className="section-header">
-            <span className="section-icon">🎠</span>
+            <div className="section-icon">🎠</div>
             <h2>Carousel (4:5)</h2>
             <button className="download-btn" onClick={handleDownloadZip}>
               ⬇️ Download ZIP
