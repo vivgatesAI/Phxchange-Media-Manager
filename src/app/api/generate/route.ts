@@ -4,132 +4,114 @@ import { scrapeUrl } from "@/lib/scrape";
 
 export async function POST(req: Request) {
   try {
-    let url: string | undefined;
-    let text: string | undefined;
-    let model: string | undefined;
-    let fileText: string | undefined;
+    const body = await req.json();
+    const url = body.url;
+    const text = body.text;
+    const topic = body.topic;
+    const model = body.model;
+    const mode = body.mode;
+    const prompt = body.prompt;
 
-    const contentType = req.headers.get("content-type") || "";
-    if (contentType.includes("multipart/form-data")) {
-      const form = await req.formData();
-      url = (form.get("url") as string) || undefined;
-      text = (form.get("text") as string) || undefined;
-      model = (form.get("model") as string) || undefined;
-      const file = form.get("file") as File | null;
-      if (file) {
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const pdfParse = (await import("pdf-parse")).default as any;
-        const parsed = await pdfParse(buffer);
-        fileText = parsed?.text || "";
-      }
-    } else {
-      const body = await req.json();
-      url = body.url;
-      text = body.text;
-      model = body.model;
+    let textModel = "kimi-k2-5";
+    if (model && model !== "gemini-3-flash-preview") {
+      textModel = model;
     }
 
-    let content = (text || "").trim();
-    if (!content && fileText) content = fileText.trim();
-    if ((!content || content.length < 200) && url) {
+    if (mode === "post-only") {
+      const messages = [
+        { role: "system", content: "You are a world-class LinkedIn content writer for healthcare and pharma executives. Write in a polished, modern magazine style. No em dashes. No apostrophes. Keep sentences concise." },
+        { role: "user", content: prompt }
+      ];
+      const chat = await veniceChat({ model: textModel, messages });
+      const post = chat.choices[0].message.content;
+      return NextResponse.json({ post: post || "" });
+    }
+
+    if (mode === "image-only") {
+      const img = await veniceImage({ prompt });
+      const b64 = img.images[0];
+      if (!b64) throw new Error("Failed to generate image");
+      return NextResponse.json({ image: "data:image/png;base64," + b64 });
+    }
+
+    if (mode === "improve-prompt") {
+      const messages = [
+        { role: "system", content: "You are an expert at crafting image generation prompts. Improve the given prompt to be more specific, engaging, and visually compelling. Keep it under 200 words." },
+        { role: "user", content: prompt }
+      ];
+      const chat = await veniceChat({ model: textModel, messages });
+      const improvedPrompt = chat.choices[0].message.content;
+      return NextResponse.json({ improvedPrompt: improvedPrompt || "" });
+    }
+
+    let content = topic || "";
+    if (text) {
+      content = (topic || "AI in Pharmaceutical Industry") + "\n\nAdditional context: " + text;
+    }
+    
+    if ((!content || content.length < 20) && url) {
       const scraped = await scrapeUrl(url);
-      content = `${scraped.title}\n\n${scraped.text}`;
+      content = scraped.title + "\n\n" + scraped.text;
     }
+    
     if (!content) return NextResponse.json({ error: "No content provided" }, { status: 400 });
 
-    // Use kimi-k2-5 for text generation (unless user specifies otherwise)
-    const textModel = model && model !== "gemini-3-flash-preview" ? model : "kimi-k2-5";
-
-    const system = `You are a world-class media writer. Write in a polished, modern magazine style. Audience: healthcare/pharma leaders excited about GenAI. No em dashes. Do not use apostrophes. Keep sentences concise and clear.`;
-
-    const prompt = `Summarize the following content into a LinkedIn post for healthcare and pharma leaders. Include:
-- a headline line
-- 5 to 7 short bullets
-- 3 key stats or numerical takeaways
-- a closing insight and call to action
-Do not use hashtags.\n\nCONTENT:\n${content}`;
-
-    const chat = await veniceChat({ model: textModel, messages: [
-      { role: "system", content: system },
-      { role: "user", content: prompt },
-    ]});
-
-    const post = chat.choices?.[0]?.message?.content || "";
-
-    const stats = await extractStatsFromSource(content, textModel);
-
-    const imagePrompts = buildImagePrompts(stats, content);
+    const postPrompt = "Write a LinkedIn post about " + (topic || "AI in the pharmaceutical industry") + ". Focus on: Breaking news, key insights, why it matters to pharma/AI leaders. Include: Headline, 5-7 bullet points, 3 key stats, call to action. Style: Professional, engaging, executive quality. No hashtags.";
     
-    // Generate images in parallel (3 at a time)
-    const images: string[] = [];
+    const postMessages = [
+      { role: "system", content: "You are a world-class LinkedIn content writer for healthcare and pharma executives. Write in a polished, modern magazine style. No em dashes. No apostrophes. Keep sentences concise and clear." },
+      { role: "user", content: postPrompt }
+    ];
+    const postChat = await veniceChat({ model: textModel, messages: postMessages });
+    const post = postChat.choices[0].message.content || "";
+
+    const statsPrompt = "Extract 6 key insights or statistics about " + (topic || "AI in pharmaceutical industry") + ". Each should be a short, impactful sentence relevant to pharma executives.";
+    const statsMessages = [
+      { role: "system", content: "You are a research analyst. Extract key insights for pharma leaders." },
+      { role: "user", content: statsPrompt }
+    ];
+    const statsChat = await veniceChat({ model: textModel, messages: statsMessages });
+    const statsText = statsChat.choices[0].message.content || "";
+    const stats = statsText.split(/\n+/).map(function(s) { return s.replace(/^[\-\*\d\.\)\s]+/, "").trim(); }).filter(Boolean).slice(0, 6);
+
+    const imagePrompts = buildImagePrompts(topic || "AI in Pharmaceutical Industry", stats);
+
+    const images = [];
     const batchSize = 3;
     for (let i = 0; i < imagePrompts.length; i += batchSize) {
       const batch = imagePrompts.slice(i, i + batchSize);
       const batchResults = await Promise.all(
-        batch.map(p => veniceImage({ prompt: p }))
+        batch.map(function(p) { return veniceImage({ prompt: p }); })
       );
-      batchResults.forEach(img => {
-        const b64 = img.images?.[0];
-        if (b64) images.push(`data:image/png;base64,${b64}`);
-      });
+      for (let j = 0; j < batchResults.length; j++) {
+        const b64 = batchResults[j].images[0];
+        if (b64) images.push("data:image/png;base64," + b64);
+      }
     }
 
-    return NextResponse.json({ post, images, stats });
+    return NextResponse.json({ post: post, images: images, stats: stats });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-async function extractStatsFromSource(content: string, model: string): Promise<string[]> {
-  const system = "You are a research analyst. Extract the most relevant stats and numerical facts for a healthcare and pharma audience. No em dashes. No apostrophes.";
-  const prompt = `From the following content, extract the 6 most relevant stats or numerical facts. Each item should be a short sentence. If there are no numbers, infer measurable outcomes or benchmarks that are implied.\n\nCONTENT:\n${content}`;
-  const chat = await veniceChat({ model, messages: [
-    { role: "system", content: system },
-    { role: "user", content: prompt },
-  ]});
-  const text = chat.choices?.[0]?.message?.content || "";
-  return text.split(/\n+/).map(s => s.replace(/^[\-\*\d\.\)\s]+/, "").trim()).filter(Boolean).slice(0, 6);
-}
-
-function buildImagePrompts(stats: string[], content: string): string[] {
-  const palette = "Use AIPharmaXchange colors: deep navy, blue, soft light blue, and gold accents.";
+function buildImagePrompts(topic: string, stats: string[]): string[] {
+  var palette = "Use AIPharmaXchange brand colors: deep navy (#0f172a), blue (#1e3a5f), soft light blue, and gold accents (#f4a261).";
   
-  // Extract key topic from content for personalization
-  const contentLower = content.toLowerCase();
-  let topic = "Healthcare Innovation";
-  if (contentLower.includes("ai") || contentLower.includes("artificial intelligence")) {
-    topic = "AI in Healthcare";
-  } else if (contentLower.includes("drug") || contentLower.includes("clinical")) {
-    topic = "Clinical Research";
-  } else if (contentLower.includes("patient")) {
-    topic = "Patient Outcomes";
-  } else if (contentLower.includes("digital")) {
-    topic = "Digital Health";
-  }
-  
-  // Extract a highlight stat if available
-  const highlightStat = stats[0] || "key metrics";
-  const secondStat = stats[1] || "important data";
+  var highlightStat = stats[0] || "AI innovation";
+  var secondStat = stats[1] || "healthcare transformation";
 
-  // Create content-focused prompts WITHOUT Slide # labels
   return [
-    // Slide 1: Key takeaways - focus on actual content
-    `Professional healthcare infographic showcasing key insights from ${topic}. Display key takeaways in elegant typography with minimalist icons. ${palette} Clean modern design, executive presentation style.`,
+    "Professional healthcare infographic showcasing key insights about " + topic + ". Display 3-4 key takeaways in elegant typography with minimalist medical icons. " + palette + " Clean modern design, executive presentation style, corporate aesthetic.",
     
-    // Slide 2: Main stat highlight - make it about the actual data
-    `Minimalist executive slide featuring "${highlightStat}" prominently displayed in a sophisticated callout box. Use clean data visualization style. ${palette} Modern corporate aesthetic.`,
+    "Minimalist executive slide featuring \"" + highlightStat + "\" prominently displayed in a sophisticated callout box. Clean data visualization style. " + palette + " Modern corporate aesthetic, professional healthcare design.",
     
-    // Slide 3: Secondary data point - tie to pharma context
-    `Professional healthcare illustration emphasizing "${secondStat}" with subtle iconography. ${palette} Executive presentation quality, clean and impactful.`,
+    "Professional healthcare illustration emphasizing \"" + secondStat + "\" with subtle iconography and evidence-based design elements. " + palette + " Executive presentation quality, clean and impactful.",
     
-    // Slide 4: Process/workflow - customize to content
-    `Process diagram showing impact and workflow for ${topic}. Clean minimalist icons in watercolor style. ${palette} Professional healthcare aesthetic.`,
+    "Process diagram showing AI implementation workflow in pharmaceutical industry. Clean minimalist icons in contemporary style. " + palette + " Professional healthcare aesthetic, executive quality.",
     
-    // Slide 5: Scale/adoption - pharma-focused
-    `Abstract modern illustration representing adoption and scale in healthcare. ${palette} Executive quality, sophisticated and forward-thinking.`,
+    "Abstract modern illustration representing pharmaceutical innovation and AI technology adoption at scale. Sophisticated and forward-thinking design. " + palette + " Executive quality, premium corporate style.",
     
-    // Slide 6: CTA - no labels, just branding
-    `Elegant call-to-action slide for healthcare leaders. Centered sophisticated text encouraging engagement. ${palette} Premium corporate design, minimalist and powerful.`
+    "Elegant call-to-action slide for healthcare and pharma industry leaders. Centered sophisticated text encouraging connection and engagement. " + palette + " Premium corporate design, minimalist and powerful."
   ];
 }
