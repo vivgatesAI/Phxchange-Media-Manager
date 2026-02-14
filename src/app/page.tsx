@@ -101,7 +101,7 @@ export default function Home() {
     setImages([]);
     setStats([]);
     setImageProgress(0);
-    setProgress("Generating LinkedIn post and images...");
+    setProgress("Scraping article, summarizing, and generating LinkedIn post...");
 
     try {
       const res = await fetch("/api/generate", {
@@ -109,7 +109,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           url, 
-          text, 
+          articleText: text, // Pass full article text for context
           topic: topic || "AI in Pharmaceutical Industry",
           model,
           mode: "yolo"
